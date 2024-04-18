@@ -118,3 +118,64 @@ proc mixed data=mydata.bmilda plots(maxpoints=none);
 	model bmi=time / solution;
 	random intercept Time / Subject=ID TYPE=UN;
 run;
+
+/* ******************************************** */
+/* Estimating the Random Effects */
+/* Empirical Bayes Estimates saved in file eb */
+/* ******************************************** */
+ods exclude all;
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time / solution;
+	random intercept Time / Subject=ID TYPE=UN solution;
+	ods output solutionr=mydata.eb;
+run;
+ods exclude none;
+
+
+/* ******************************************** */
+/* Sort and format the empirical Bayes estimates 
+into wide format */
+/* ******************************************** */
+proc sort data=mydata.eb out=ebSorted;
+	by id;
+run;
+
+proc transpose data=ebSorted out=mydata.ebWide prefix=eb;
+	by id;
+	id Effect;
+	Var Estimate;
+run;
+
+/* ******************************************** */
+/* Histograms of Random Effects */
+/* ******************************************** */
+
+proc univariate data=mydata.ebWide;
+	var ebintercept;
+	histogram ebintercept;
+run;
+
+proc univariate data=mydata.ebWide;
+	var ebtime;
+	histogram ebtime;
+run;
+
+/* ******************************************** */
+/* Scatterplots of Random Effects */
+/* ******************************************** */
+proc sgplot data=mydata.ebWide;
+	scatter x=ebintercept y=ebtime / datalabel=id;
+run;
+
+/*Create Label Variable to Identify Outliers */
+data mydata.ebWide;
+set mydata.ebwide;
+Label = id;
+if id not in ("4844","344","1332","4113") then
+	Label = " ";
+run;
+
+proc sgplot data=mydata.ebWide;
+	scatter x=ebintercept y=ebtime / datalabel=Label;
+run;
