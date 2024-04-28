@@ -179,3 +179,80 @@ run;
 proc sgplot data=mydata.ebWide;
 	scatter x=ebintercept y=ebtime / datalabel=Label;
 run;
+
+/* Curve of BMI over time per patient */
+OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
+
+PROC SGPLOT data=mydata.bmilda;
+  where ID <= 50;
+
+  series x=time y=bmi / group=ID curvelabel;
+  loess x=time y=bmi / curvelabel='Loess curve' markerattrs=(size=0);
+  yaxis min=0 grid;
+  xaxis grid;
+RUN;
+
+/* Loess curve of bmi over time */
+OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
+
+PROC SGPLOT data=mydata.bmilda;
+  loess x=time y=bmi / curvelabel='Loess curve' markerattrs=(size=0);
+  yaxis min=0 grid;
+  xaxis grid;
+RUN;
+
+/*                           Basic model                                     */
+/*---------------------------------------------------------------------------*/
+/*Test1*/
+proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+	class ID;
+	model bmi=time / solution;
+	random intercept / type=un subject=ID g gcorr v vcorr;
+run;
+/* time^2 and time^3 are not significant. This is coherent with the loess curve */
+
+
+/*                           Model with covariates fages and sex             */
+/*---------------------------------------------------------------------------*/
+
+/*Test 2*/
+proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+	class ID;
+	model bmi=time sex fage fage*sex/ solution;
+	random intercept / type=un subject=ID g gcorr v vcorr;
+run;
+/* fage*sex is not significant and sex is at the threshold */
+
+/*Test 3*/
+/*interaction fage and sex*/
+proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+	class ID;
+	model bmi=time FAGE*SEX/ solution;
+	random intercept / type=un subject=ID g gcorr v vcorr;
+run;
+/* time and fage*sex are significant */
+
+/*Test 4 */
+
+proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+	class SEX;
+	model BMI=TIME fage FAGE*SEX / solution;
+	random intercept / type=un subject=ID g gcorr v vcorr;
+run;	
+/* all covariates are significant */
+
+/* Test 5 */
+proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+	class SEX;
+	model BMI=TIME sex FAGE*SEX / solution;
+	random intercept / type=un subject=ID g gcorr v vcorr;
+run;
+/* sex is not significant */
+/* Test 6 */
+proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+	class SEX;
+	model BMI=TIME sex FAGE / solution;
+	random intercept / type=un subject=ID g gcorr v vcorr;
+run;
+
+/* All covariates are significant */
