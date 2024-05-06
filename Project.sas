@@ -1,4 +1,4 @@
-libname mydata "/home/u63613148/Mixed_Models/Project";
+libname mydata '/home/u63630988/sasuser.v94';
 
 proc glm data=mydata.bmilda;
 	run;
@@ -119,6 +119,8 @@ proc mixed data=mydata.bmilda plots(maxpoints=none);
 	random intercept Time / Subject=ID TYPE=UN;
 run;
 
+
+
 /* ******************************************** */
 /* Estimating the Random Effects */
 /* Empirical Bayes Estimates saved in file eb */
@@ -132,17 +134,46 @@ proc mixed data=mydata.bmilda plots(maxpoints=none);
 run;
 ods exclude none;
 
-
 /* ******************************************** */
-/* Sort and format the empirical Bayes estimates 
-into wide format */
+/* Format Emprical Bayes' Estimates so that other
+covariates are included for further analysis*/
 /* ******************************************** */
 proc sort data=mydata.eb out=ebSorted;
 	by id;
 run;
 
-proc transpose data=ebSorted out=mydata.ebWide prefix=eb;
+proc sort data=mydata.bmilda out = bmisorted;
 	by id;
+run; 
+
+/*Create new variable if a subject every smoked. 
+Equal to 1 if they smoked in half or more of 
+observations */
+proc sql;
+create table bmisorted as
+select *, round(avg(smoking)) as smoked
+from bmisorted
+group by id;
+quit;
+
+/*Merge the two tables */
+data join;
+	merge ebsorted
+	bmisorted;
+	by id;
+run;
+
+proc sort data=join nodupkey;
+	by id estimate;
+run;
+
+proc sort data = join;
+	by id sex;
+run;
+
+
+proc transpose data=join out=mydata.ebWide prefix=eb;
+	by id sex smoked;
 	id Effect;
 	Var Estimate;
 run;
@@ -151,15 +182,114 @@ run;
 /* Histograms of Random Effects */
 /* ******************************************** */
 
-proc univariate data=mydata.ebWide;
-	var ebintercept;
-	histogram ebintercept;
-run;
+proc format;
+value sexFmt
+0 = "Female"
+1 = "Male"
+;
+
+proc format;
+value smokerFmt
+0 = "NonSmoker"
+1 = "Smoker"
+;
+
+
+/* Regular Histograms intercepts and slopes */
 
 proc univariate data=mydata.ebWide;
-	var ebtime;
-	histogram ebtime;
+format sex sexFmt.;
+format smoked smokerFmt.;
+	var ebintercept;
+	id sex smoked;
+	histogram ebintercept / odstitle = "EB Estimates for Intercepts" nohlabel vaxislabel="Proportion";
 run;
+
+
+proc univariate data=mydata.ebWide;
+format sex sexFmt.;
+format smoked smokerFmt.;
+	var ebtime;
+	id sex smoked;
+	histogram ebtime / odstitle = "EB Estimates for Slopes" nohlabel vaxislabel="Proportion";
+run;
+
+/*Random effects split by gender for intercepts*/
+proc univariate data=mydata.ebWide;
+format sex sexFmt.;
+format smoked smokerFmt.;
+	class sex;
+	var ebintercept;
+	id id;
+	histogram ebintercept / odstitle = "Intercepts by Gender" nohlabel vaxislabel="Proportion";
+run;
+
+proc sgplot data=mydata.ebWide;
+format sex sexFmt.;
+	histogram ebintercept / group=sex transparency=0.5;
+	density ebintercept / group=sex;
+	xaxis display=(nolabel);
+	title "Intercept Estimates by Gender";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+run;
+
+/*Random effects split by gender for slopes*/
+proc univariate data=mydata.ebWide;
+format sex sexFmt.;
+	class sex;
+	var ebtime;
+	id id;
+	histogram ebtime / odstitle = "Slopes by Gender" nohlabel vaxislabel="Proportion";
+run;
+
+proc sgplot data=mydata.ebWide;
+format sex sexFmt.;
+	histogram ebtime / group=sex transparency=0.5;
+	density ebtime / group=sex;
+	xaxis display=(nolabel);
+	title "Slope Estimates by Gender";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+run;
+
+
+/*Random effects split by smoking status for intercepts:*/
+proc univariate data=mydata.ebWide;
+format smoked smokerFmt.;
+	class smoked;
+	var ebintercept;
+	id id;
+	histogram ebintercept / odstitle = "Intercepts by Smoking Status" nohlabel vaxislabel="Proportion";
+run;
+
+proc sgplot data=mydata.ebWide;
+format smoked smokerFmt.;
+	where smoked is not missing;
+	histogram ebintercept / group=smoked transparency=0.5;
+	density ebintercept / group=smoked;
+	title "Intercept Estimates by Smoking Status";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+run;
+
+
+/*Random effects split by smoking status for slopes:*/
+proc univariate data=mydata.ebWide;
+format smoked smokerFmt.;
+	class smoked;
+	var ebtime;
+	id id;
+	histogram ebtime / odstitle = "Slopes by Smoking Status" nohlabel vaxislabel="Proportion";
+run;
+
+proc sgplot data=mydata.ebWide;
+format smoked smokerFmt.;
+	where smoked is not missing;
+	histogram ebtime / group=smoked transparency=0.5;
+	density ebtime / group=smoked;
+	title "Intercept Estimates by Smoking Status";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+	xaxis min = -0.5 max=0.5;
+run;
+
 
 /* ******************************************** */
 /* Scatterplots of Random Effects */
@@ -177,8 +307,39 @@ if id not in ("4844","344","1332","4113") then
 run;
 
 proc sgplot data=mydata.ebWide;
-	scatter x=ebintercept y=ebtime / datalabel=Label;
+	scatter x=ebintercept y=ebtime / 
+	markerattrs=(symbol=CircleFilled size=5)
+	datalabel=Label;
+	xaxis label = "Intercept";
+	yaxis label = "Slope";
 run;
+
+
+/*Add in color coding for gender */
+proc sgplot data=mydata.ebWide;
+format sex sexFmt.;
+	scatter x=ebintercept y=ebtime / 
+	markerattrs=(symbol=CircleFilled size=5)
+	group=sex
+	datalabel=Label;
+	xaxis label = "Intercept";
+	yaxis label = "Slope";
+run;
+
+
+/* Add in color coding for smoking status */
+proc sgplot data=mydata.ebWide;
+format smoked smokerFmt.;
+	where smoked is not missing;
+	scatter x=ebintercept y=ebtime / 
+	markerattrs=(symbol=CircleFilled size=5)
+	group=smoked
+	datalabel=Label;
+	xaxis label = "Intercept";
+	yaxis label = "Slope";
+run;
+
+
 
 /* Curve of BMI over time per patient */
 OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
@@ -256,3 +417,23 @@ proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
 run;
 
 /* All covariates are significant */
+
+
+/* ******************************************** 
+Question 5: Does the evolution of BMI depend
+on the gender and the age of the subject at the
+start of the study??
+******************************************** */
+
+/*To analyze this we create a model with interactions.
+We are looking for time by age or time by sex interaction*/
+
+proc mixed data=mydata.bmilda plots(MAXPOINTS = 15000);
+	class ID;
+	model bmi=time fage time*fage sex time*sex smoking/ solution;
+	random intercept / type=un subject=ID g gcorr v vcorr;
+run;
+
+/* both interactions are significant */
+
+
