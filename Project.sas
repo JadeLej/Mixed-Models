@@ -162,6 +162,14 @@ proc sgplot data=mydata.bmilda;
     xaxis grid;
 run;
 
+/* Loess curve of bmi over time */
+ODS GRAPHICS ON / LOESSMAXOBS=15000;
+PROC SGPLOT data=mydata.bmilda;
+  loess x=time y=bmi / curvelabel='Loess curve' markerattrs=(size=0);
+  yaxis min=0 grid;
+  xaxis grid;
+RUN;
+
 /* ******************************************** */
 /* ********* Exploratory Correlations ********* */
 /* ******************************************** */
@@ -198,6 +206,11 @@ proc mixed data=mydata.bmilda plots(maxpoints=none)=all;
     class ID;
     model bmi=time / solution;
     random intercept Time / Subject=ID TYPE=UN;
+    store out = curve1;
+run;
+
+proc PLM restore=curve1;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
 run;
 ods graphics off; 
 
@@ -419,84 +432,240 @@ format smoked smokerFmt.;
 	yaxis label = "Slope";
 run;
 
+/* ******************************************** */
+/* Model2 with covariates fages and sex 
+/* ******************************************** */
 
 
-/* Curve of BMI over time per patient */
-OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
-
-PROC SGPLOT data=mydata.bmilda;
-  where ID <= 50;
-
-  series x=time y=bmi / group=ID curvelabel;
-  loess x=time y=bmi / curvelabel='Loess curve' markerattrs=(size=0);
-  yaxis min=0 grid;
-  xaxis grid;
-RUN;
-
-/* Loess curve of bmi over time */
-OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
-
-PROC SGPLOT data=mydata.bmilda;
-  loess x=time y=bmi / curvelabel='Loess curve' markerattrs=(size=0);
-  yaxis min=0 grid;
-  xaxis grid;
-RUN;
-
-/*                           Basic model                                     */
-/*---------------------------------------------------------------------------*/
-/*Test1*/
-proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+proc mixed data=mydata.bmilda plots(maxpoints=none);
 	class ID;
-	model bmi=time / solution;
-	random intercept / type=un subject=ID g gcorr v vcorr;
+	model bmi=time SEX FAGE / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve2;
+	ods output solutionr=mydata.sol2;
 run;
-/* time^2 and time^3 are not significant. This is coherent with the loess curve */
+
+proc PLM restore=curve2;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol2(keep= ID Effect Estimate)
+	out= mydata.sol2(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol2 noprint;
+histogram intercept time ;
+run;
 
 
-/*                           Model with covariates fages and sex             */
-/*---------------------------------------------------------------------------*/
 
-/*Test 2*/
-proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+
+
+/* *******************************************************/
+/* Model3 with covariates fages and sex and Interactions
+/* *******************************************************/
+
+proc mixed data=mydata.bmilda plots(maxpoints=none);
 	class ID;
-	model bmi=time sex fage fage*sex/ solution;
-	random intercept / type=un subject=ID g gcorr v vcorr;
+	model bmi=time SEX FAGE SEX*FAGE SEX*TIME TIME*FAGE / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve3;
+	ods output solutionr=mydata.sol3;
 run;
-/* fage*sex is not significant and sex is at the threshold */
 
-/*Test 3*/
-/*interaction fage and sex*/
-proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
+proc PLM restore=curve3;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol3(keep= ID Effect Estimate)
+	out= mydata.sol3(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol3 noprint;
+histogram intercept time ;
+run;
+
+/* *******************************************************/
+/* Models with covariates fages and sex and Interactions 
+/* the role of SEX Model4, model5 and model6 */
+/* *******************************************************/
+
+
+proc mixed data=mydata.bmilda plots(maxpoints=none);
 	class ID;
-	model bmi=time FAGE*SEX/ solution;
-	random intercept / type=un subject=ID g gcorr v vcorr;
-run;
-/* time and fage*sex are significant */
-
-/*Test 4 */
-
-proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
-	class SEX;
-	model BMI=TIME fage FAGE*SEX / solution;
-	random intercept / type=un subject=ID g gcorr v vcorr;
-run;	
-/* all covariates are significant */
-
-/* Test 5 */
-proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
-	class SEX;
-	model BMI=TIME sex FAGE*SEX / solution;
-	random intercept / type=un subject=ID g gcorr v vcorr;
-run;
-/* sex is not significant */
-/* Test 6 */
-proc mixed data=mydata.bmilda plots(MAXPOINTS=15000);
-	class SEX;
-	model BMI=TIME sex FAGE / solution;
-	random intercept / type=un subject=ID g gcorr v vcorr;
+	model bmi=time FAGE SEX*FAGE TIME*FAGE / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve4;
+	ods output solutionr=mydata.sol4;
 run;
 
-/* All covariates are significant */
+proc PLM restore=curve4;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol4(keep= ID Effect Estimate)
+	out= mydata.sol4(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol4 noprint;
+histogram intercept time ;
+run;
+
+/*-----------------------------------------------------*/
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time FAGE SEX*TIME TIME*FAGE / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve5;
+	ods output solutionr=mydata.sol5;
+run;
+
+proc PLM restore=curve5;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol5(keep= ID Effect Estimate)
+	out= mydata.sol5(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol5 noprint;
+histogram intercept time ;
+run;
+
+/*-----------------------------------------------------*/
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time FAGE SEX TIME*FAGE / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve6;
+	ods output solutionr=mydata.sol6;
+run;
+
+proc PLM restore=curve6;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol6(keep= ID Effect Estimate)
+	out= mydata.sol6(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol6 noprint;
+histogram intercept time ;
+run;
+
+
+/* *******************************************************/
+/* Models with covariates fage, sex and SMOKING 
+/* the role of SMOKING Model7*/
+/* *******************************************************/
+
+
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time FAGE SEX SMOKING / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve7;
+	ods output solutionr=mydata.sol7;
+run;
+
+proc PLM restore=curve7;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol7(keep= ID Effect Estimate)
+	out= mydata.sol7(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol7 noprint;
+histogram intercept time ;
+run;
+/* *******************************************************/
+/* SMOKING and Interactions */
+/* the role of SMOKING Model8, model9, model10 and model11 */
+/* *******************************************************/
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time FAGE SEX SMOKING SMOKING*time SMOKING*FAGE SMOKING*SEX / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve8;
+	ods output solutionr=mydata.sol8;
+run;
+
+proc PLM restore=curve8;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol8(keep= ID Effect Estimate)
+	out= mydata.sol8(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol8 noprint;
+histogram intercept time ;
+run;
+
+/*------------------------------------------------------------*/
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time FAGE SEX SMOKING*time / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve9;
+	ods output solutionr=mydata.sol9;
+run;
+
+proc PLM restore=curve9;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol9(keep= ID Effect Estimate)
+	out= mydata.sol9(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol9 noprint;
+histogram intercept time ;
+run;
+/*------------------------------------------------------------*/
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time FAGE SEX SMOKING*FAGE / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve10;
+	ods output solutionr=mydata.sol10;
+run;
+
+proc PLM restore=curve10;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol10(keep= ID Effect Estimate)
+	out= mydata.sol10(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol10 noprint;
+histogram intercept time ;
+run;
+
+/*------------------------------------------------------------*/
+proc mixed data=mydata.bmilda plots(maxpoints=none);
+	class ID;
+	model bmi=time FAGE SEX SMOKING*SEX / solution;
+	random intercept Time / Subject=ID TYPE=UN g gcorr v vcorr solution;
+	store out = curve11;
+	ods output solutionr=mydata.sol11;
+run;
+
+proc PLM restore=curve11;
+	effectplot fit(x=time) / predlabel= 'Fitted values for BMI' yrange=(15,35);
+run;
+
+proc transpose data=mydata.sol11(keep= ID Effect Estimate)
+	out= mydata.sol11(rename=(COL1=Intercept COL2=time) drop=_NAME_);
+by ID;
+run;
+proc univariate data=mydata.sol11 noprint;
+histogram intercept time ;
+run;
+
+/**********************************************************************************************
 
 
 /* ******************************************** 
