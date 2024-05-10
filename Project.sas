@@ -1,6 +1,5 @@
 libname mydata '/home/u63630988/sasuser.v94';
 
-
 /* ******************************************** */
 /* ***** Dataset information & formatting ***** */
 /* ******************************************** */
@@ -14,19 +13,28 @@ PROC FORMAT;
  1=’Male’;
 RUN; 
 
+proc sort data=mydata.bmilda out=sorted;
+    by id time;
+run;
+
+data ID_once;
+    set sorted;
+    by id time;
+    if first.ID then output;
+run;
+
 /* ******************************************** */
 /* ******* Data Explorations and plots ******** */
 /* ******************************************** */
-
 /* **amount of males/fales and smokers/nonsmokers** */
-proc sgplot data=mydata.bmilda;
-	vbar smoking / group = sex; 
+proc sgplot data=ID_once;
+	vbar smoking / group = sex datalabel datalabelattrs=(size=10) datalabelpos=top;; 
 	title "Amount of males and females who are smokers and non-smokers";
 	format smoking smokingf. sex sexf.;
 run; 
 
-proc freq data=mydata.bmilda;
-   tables sex smoking id;
+proc freq data=ID_once;
+   tables sex smoking smoking*sex;
    title "Amount of males and females and smokers/nonsmokers";
    format smoking smokingf. sex sexf.;
 run;
@@ -43,6 +51,11 @@ run;
 /* **mean fage and BMI** */
 proc means data=mydata.bmilda;
    var bmi fage;
+   title "Mean BMI and Age for all observations";
+run;
+proc means data=ID_once;
+   var bmi fage;
+   title "Mean BMI and Age for all individuals at baseline";
 run;
 
 proc sgplot data=mydata.bmilda;
@@ -50,30 +63,26 @@ proc sgplot data=mydata.bmilda;
    Density bmi;
    histogram fage / transparency=0.5;
    Density fage; 
-   title "Distribution of BMI and Age";
+   title "Distribution of BMI and Age for all observations";
+run;
+
+proc sgplot data=ID_once;
+   histogram bmi / transparency=0.5;
+   Density bmi;
+   histogram fage / transparency=0.5;
+   Density fage; 
+   title "Distribution of BMI and Age at baseline";
 run;
 
 /* **mean fage and BMI for male/females smokers/non-smokers** */
-proc sort data=mydata.bmilda; 
+proc sort data=ID_once; 
 by sex smoking; 
 run; 
 
-proc means data=mydata.bmilda;
+proc means data=ID_once;
 	var bmi fage;
 	by sex smoking;
 	format smoking smokingf. sex sexf.;
-run;
-
-proc sgplot data=means_summary;
-    vbar sex / response=Mean_BMI; 
-        title 'Mean BMI by Sex';
-        format smoking smokingf. sex sexf.;
-run;
-
-proc sgplot data=means_summary;
-    vbar smoking / response=Mean_BMI;
-    title 'Mean BMI by mean smoking habits';
-    format smoking smokingf. sex sexf.;
 run;
 
 /* **mean fage and BMI for male/females (non)-smokers per repeated observation** */
