@@ -1,4 +1,5 @@
-libname mydata '/home/u63630988/sasuser.v94';
+/*libname mydata '/home/u63630988/sasuser.v94'; */
+libname mydata '/home/u63610451/Mixed_models/';
 
 /* ******************************************** */
 /* ***** Dataset information & formatting ***** */
@@ -22,6 +23,7 @@ data ID_once;
     by id time;
     if first.ID then output;
 run;
+
 
 /* ******************************************** */
 /* ******* Data Explorations and plots ******** */
@@ -685,4 +687,130 @@ run;
 
 /* both interactions are significant */
 
+/**********************************************************************************************
+
+
+/* ******************************************** 
+Question 7. Fit a logistic mixed model for BMI over time, and interpret results, including random effect estimates.
+Compare with the original outcome.
+******************************************** */
+
+/* Dichotomise BMI */
+data bmi_dicho;
+    set mydata.bmilda;
+	if BMI > 18.5 and BMI < 24.9 then
+		BMI_D = 0;
+	else
+		BMI_D = 1;
+run;
+
+
+/* logistic mixed model */
+proc glimmix data=bmi_dicho;
+	class id;
+	model BMI_D (event='1') = time FAGE SEX SMOKING SMOKING*time sex*time FAGE*time / dist=binary solution;
+	random intercept Time /Subject=ID TYPE=UN solution;
+	estimate 'difference slopes sex over time' sex*time 1 -1;
+	estimate 'difference slopes fage over time' fage*time 1 -1;
+	estimate 'difference slopes smoking over time' smoking*time 1 -1;
+	ods output solutionr=mydata.logit_eb;
+	nloptions maxiter=30;
+run;
+
+/* parse random effects */
+
+data logiteb_sorted;
+    set mydata.logit_eb;
+    id = input(scan(Subject, 2, ' '), 8.);
+run;
+
+proc sort data=logiteb_sorted out=logiteb_sorted;
+	by id;
+run;
+
+proc sort data=mydata.bmilda out = bmisorted;
+	by id;
+run; 
+
+proc sql;
+	create table bmisorted as
+	select *, round(avg(smoking)) as smoked
+	from bmisorted
+	group by id;
+quit;
+
+data logiteb_joined;
+	merge logiteb_sorted
+	bmisorted;
+	by id;
+run;
+
+proc sort data=logiteb_joined nodupkey;
+	by id estimate;
+run;
+
+proc sort data = logiteb_joined;
+	by id sex;
+run;
+
+
+proc transpose data=logiteb_joined out=mydata.logiteb_parsed prefix=eb;
+	by id sex smoked;
+	id Effect;
+	Var Estimate;
+run;
+
+/* Plot random effects */
+
+proc univariate data=mydata.logiteb_parsed;
+format sex sexFmt.;
+format smoked smokerFmt.;
+	var ebintercept;
+	id sex smoked;
+	histogram ebintercept / odstitle = "logistic model - EB Estimates for Intercepts" nohlabel vaxislabel="Proportion";
+run;
+
+
+proc univariate data=mydata.logiteb_parsed;
+format sex sexFmt.;
+format smoked smokerFmt.;
+	var ebtime;
+	id sex smoked;
+	histogram ebtime / odstitle = "logistic model - EB Estimates for Slopes" nohlabel vaxislabel="Proportion";
+run;
+
+/* plot random effects per smoking status */
+proc sgplot data=mydata.logiteb_parsed;
+format smoked smokerFmt.;
+	where smoked is not missing;
+	histogram ebintercept / group=smoked transparency=0.5;
+	title "logistic model - Intercept Estimates by Smoking Status";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+run;
+
+
+proc sgplot data=mydata.logiteb_parsed;
+format smoked smokerFmt.;
+	where smoked is not missing;
+	histogram ebtime / group=smoked transparency=0.5;
+	xaxis display=(nolabel);
+	title "logistic model - Slope Estimates by Smoking Status";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+run;
+
+/* plot random effects per sex */
+proc sgplot data=mydata.logiteb_parsed;
+format sex sexFmt.;
+	histogram ebintercept / group=sex transparency=0.5;
+	title "logistic model - Intercept Estimates by Sex";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+run;
+
+proc sgplot data=mydata.logiteb_parsed;
+format sex sexFmt.;
+	histogram ebtime / group=sex transparency=0.5;
+	xaxis display=(nolabel);
+	title "logistic model - Slope Estimates by Sex";
+	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
+run;
 
