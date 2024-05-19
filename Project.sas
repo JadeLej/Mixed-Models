@@ -735,7 +735,7 @@ run;
 proc sql;
 	create table bmisorted as
 	select *, round(avg(smoking)) as smoked
-	from bmisorted
+	from bmisorted where time = 0;
 	group by id;
 quit;
 
@@ -750,12 +750,12 @@ proc sort data=logiteb_joined nodupkey;
 run;
 
 proc sort data = logiteb_joined;
-	by id sex;
+	by id sex bmi;
 run;
 
 
 proc transpose data=logiteb_joined out=mydata.logiteb_parsed prefix=eb;
-	by id sex smoked;
+	by id sex smoked bmi;
 	id Effect;
 	Var Estimate;
 run;
@@ -814,3 +814,6 @@ format sex sexFmt.;
 	refline 0 / axis = x lineattrs=(thickness=1 color=black pattern = dash);
 run;
 
+proc sgplot data=mydata.logiteb_parsed;
+	scatter x=bmi y=ebtime / datalabel=id;
+run;
