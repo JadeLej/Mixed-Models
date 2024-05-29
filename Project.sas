@@ -676,16 +676,53 @@ on the gender and the age of the subject at the
 start of the study??
 ******************************************** */
 
+/*need a new variable = age at start of study*/
+
+proc sort data=mydata.bmilda;
+	by id time;
+run;
+
+data bmiZero;
+	set mydata.bmilda;
+	by id time;
+	if first.id then
+		ageZero = FAGE-time;
+		retain ageZero;
+run;
+
+
+
 /*To analyze this we create a model with interactions.
-We are looking for time by age or time by sex interaction*/
+We are looking for time by age or time by sex interaction
+Store the model to use with proc plm*/
 
 proc mixed data=mydata.bmilda plots(MAXPOINTS = 15000);
 	class ID;
-	model bmi=time fage time*fage sex time*sex smoking/ solution;
-	random intercept / type=un subject=ID g gcorr v vcorr;
+	model bmi=time FAGE sex smoking time*FAGE time*sex / solution;
+	random intercept time / type=un subject=ID g gcorr v vcorr;
+	store test;
 run;
 
 /* both interactions are significant */
+
+
+/* Make plots of effects of interactions at different levels*/ 
+proc plm source=test;
+effectplot contour (x=time y=FAGE);
+run;
+
+proc plm source=test;
+effectplot fit (x=time) / at(FAGE = 20 40 60 80);
+run;
+
+proc plm restore=test;
+effectplot slicefit (x=time sliceby=FAGE plotby=sex=0 1) / clm;
+run;
+
+
+proc plm restore=test;
+effectplot slicefit (x=time sliceby=sex=(0 1)) / clm;
+run;
 
 /**********************************************************************************************
 
