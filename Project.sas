@@ -854,3 +854,377 @@ run;
 proc sgplot data=mydata.logiteb_parsed;
 	scatter x=bmi y=ebtime / datalabel=id;
 run;
+
+/* ************************************************************************************* */
+/* Marginalization */
+/* ************************************************************************************* */
+
+/* Logistic mixed model with interaction */
+proc glimmix data=bmi_dicho;
+	class id;
+	model BMI_D (event='1') = time FAGE SEX SMOKING SMOKING*time sex*time FAGE*time / dist=binary solution;
+	random intercept Time /Subject=ID TYPE=UN solution;
+	nloptions maxiter=30;
+run;
+
+proc iml;
+d={3.0359 0.2712, 0.2712 0.0187};
+call eigen(evals, evecs, D);
+print "Eigenvalues", evals;
+print "Eigenvectors", evecs;
+/*Replace small eigenvalues with a small positive number*/
+evals=choose(evals >1e-6, evals, 1e-6);
+evals=diag(evals);
+print "Regularized Eigenvalues", evals;
+/*Reconstruct the covariance matrix using regularized eignevalues*/
+D_reg = evecs*evals*t(evecs);
+l=root(D_reg);
+print D_reg; print l;
+quit;
+
+/* Marginalizing the logistic mixed model with interaction */
+data h;
+do id=1 to 1000 by 1;
+	b0=rannor(-1);
+	b1=rannor(-1);
+	ranint=1.7424*b0;
+	ranslope=0.15537*b0+0.001*b1;
+	do time=0 to 9 by 1;
+		do sex=0 to 1 by 1;
+			do fage=14 to 69 by 1;
+				do smoking=0 to 1 by 1;
+					y=exp(-2.9961+ranint+(0.2075+ranslope)*time+0.07314*fage+0.5987*sex-0.3937*smoking-0.03501*time*smoking+0.07136*time*sex-0.00330*time*fage)/
+					(1+exp(-2.9961+ranint+(0.2075+ranslope)*time+0.07314*fage+0.5987*sex-0.3937*smoking-0.03501*time*smoking+0.07136*time*sex-0.00330*time*fage));
+				output;
+				end;
+			end;
+		end;
+	end;
+end;
+run;
+
+proc sort data=h;
+by time;
+run;
+
+proc means data=h;
+var y;
+by time;
+output out=out;
+run;
+
+dm "dlgprtsetup orient=L nodisplay";
+filename fig 'c:/filename.eps';
+goptions reset=all interpol=join ftext=swiss device=pslepsfc gsfname=fig gsfmode=replace;
+proc gplot data=out;
+plot y*time / vaxis=axis2 haxis=axis1;
+axis1 label=(height=2 'Time');
+axis2 label=(height=2 angle=90 'P(Y=1)');
+where _stat_='MEAN';
+run;quit;run;
+
+/* by sex */
+proc sort data=h;
+by time sex;
+run;
+
+proc means data=h;
+var y;
+by time sex;
+output out=out;
+run;
+
+dm "dlgprtsetup orient=L nodisplay";
+filename fig 'c:/filename.eps';
+goptions reset=all interpol=join ftext=swiss device=pslepsfc gsfname=fig gsfmode=replace;
+proc gplot data=out;
+plot y*time=sex;
+where _stat_='MEAN';
+run;quit;run;
+
+/* by smoking */
+proc sort data=h;
+by time smoking;
+run;
+
+proc means data=h;
+var y;
+by time smoking;
+output out=out;
+run;
+
+dm "dlgprtsetup orient=L nodisplay";
+filename fig 'c:/filename.eps';
+goptions reset=all interpol=join ftext=swiss device=pslepsfc gsfname=fig gsfmode=replace;
+proc gplot data=out;
+plot y*time=smoking;
+where _stat_='MEAN';
+run;quit;run;
+
+/* by fage */
+proc sort data=h;
+by time fage;
+run;
+
+proc means data=h;
+var y;
+by time fage;
+output out=out;
+run;
+
+dm "dlgprtsetup orient=L nodisplay";
+filename fig 'c:/filename.eps';
+goptions reset=all interpol=join ftext=swiss device=pslepsfc gsfname=fig gsfmode=replace;
+proc gplot data=out;
+plot y*time=fage;
+where _stat_='MEAN';
+run;quit;run;
+
+
+/*Evolution of average subject*/
+
+data w;
+do id=1 to 1000 by 1;
+	do time=0 to 9 by 1;
+		do sex=0 to 1 by 1;
+			do fage=14 to 69 by 1;
+				do smoking=0 to 1 by 1;
+					y=exp(-2.9961+(0.2075)*time+0.07314*fage+0.5987*sex-0.3937*smoking-0.03501*time*smoking+0.07136*time*sex-0.00330*time*fage)/
+					(1+exp(-2.9961+(0.2075)*time+0.07314*fage+0.5987*sex-0.3937*smoking-0.03501*time*smoking+0.07136*time*sex-0.00330*time*fage));
+				output;
+				end;
+			end;
+		end;
+	end;
+end;
+run;
+proc sort data=w;
+by time;
+run;
+
+proc means data=w;
+var y;
+by time;
+output out=out;
+run;
+
+dm "dlgprtsetup orient=L nodisplay";
+filename fig 'c:/filename2.eps';
+goptions reset=all interpol=join ftext=swiss device=pslepsfc gsfname=fig gsfmode=replace;
+proc gplot data=out;
+plot y*time / vaxis=axis2 haxis=axis1;
+axis1 label=(height=2 'Time');
+axis2 label=(height=2 angle=90 'P(Y=1|b_i=0)');
+where _stat_='MEAN';
+run;quit;run;
+
+/* *************************************************************************
+Improvement Strategies
+**************************************************************************** */
+
+/* Suppressing outliers */
+
+data transformed;
+	set mydata.bmilda;
+	if bmi <= 34;
+run;
+
+ods graphics on / discretemax=4500;
+proc mixed data=transformed plots(maxpoints=none)=all;
+    class id;
+    model bmi = time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+ods graphics off;
+
+/* Incorporating outliers with random effects */
+
+ods graphics on / discretemax=4500;
+
+data bmi_dicho2;
+    set mydata.bmilda;
+	if BMI > 30 then
+		BMI_D = 1;
+	else
+		BMI_D = 0;
+run;
+
+proc mixed data=bmi_dicho2 plots(maxpoints=none)=all;
+    class id;
+    model bmi = time fage sex smoking bmi_d/ solution;
+    random intercept time bmi_d/ subject=id type=UN;
+run;
+
+ods graphics off;
+
+/* Transformations of the response variable */
+
+ods graphics on / discretemax=4500;
+
+data transformed2;
+    set mydata.bmilda;
+    log_bmi = log(bmi);
+run;
+
+data transformed3;
+	set mydata.bmilda;
+	sqrt_bmi=sqrt(bmi);
+run;
+data transformed4;
+	set mydata.bmilda;
+	square_bmi=bmi**2;
+run;
+data transformed5;
+	set mydata.bmilda;
+	sqrt3_bmi=bmi**(1/3);
+run;
+proc anova data=transformed2 plots(maxpoints=none)=all;
+    class time;
+    model log_bmi = time;
+run;
+
+proc univariate data=mydata.bmilda;
+	var bmi;
+run;
+proc univariate data=transformed2;
+	var log_bmi;
+run;
+proc univariate data=transformed3;
+	var sqrt_bmi;
+run;
+proc univariate data=transformed4;
+	var square_bmi;
+run;
+proc univariate data=transformed5;
+	var sqrt3_bmi;
+run;
+proc mixed data=transformed2 plots(maxpoints=none)=all;
+    class id;
+    model log_bmi = time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transformed3 plots(maxpoints=none)=all;
+    class id;
+    model sqrt_bmi = time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transformed4 plots(maxpoints=none)=all;
+    class id;
+    model square_bmi = time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+proc mixed data=transformed5 plots(maxpoints=none)=all;
+    class id;
+    model sqrt3_bmi = time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+ods graphics off;
+/* Transformations of the covariates */
+
+ods graphics on / discretemax=4500;
+
+data transfo1;
+    set mydata.bmilda;
+    log_fage = log(fage);
+run;
+
+data transfo2;
+	set mydata.bmilda;
+	sqrt_fage = sqrt(fage);
+run;
+
+data transfo3;
+	set mydata.bmilda;
+	square_fage = fage**2;
+run;
+
+data transfo4;
+	set mydata.bmilda;
+	log_time = log(time);
+run;
+
+data transfo5;
+	set mydata.bmilda;
+	sqrt_time = sqrt(time);
+run;
+
+data transfo6;
+	set mydata.bmilda;
+	square_time = time**2;
+run;
+
+data transfo7;
+	set mydata.bmilda;
+	sqrt3_time = time**(1/3);
+run;
+
+proc mixed data=transfo1 plots(maxpoints=none)=all;
+    class id;
+    model bmi = time log_fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transfo2 plots(maxpoints=none)=all;
+    class id;
+    model bmi = time sqrt_fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transfo3 plots(maxpoints=none)=all;
+    class id;
+    model bmi = time square_fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transfo4 plots(maxpoints=none)=all;
+    class id;
+    model bmi = log_time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transfo5 plots(maxpoints=none)=all;
+    class id;
+    model bmi = sqrt_time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transfo6 plots(maxpoints=none)=all;
+    class id;
+    model bmi = square_time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+proc mixed data=transfo7 plots(maxpoints=none)=all;
+    class id;
+    model bmi = sqrt3_time fage sex smoking / solution;
+    random intercept time / subject=id type=UN;
+run;
+
+ods graphics off;
+
+/* Adding random effects */
+
+ods graphics on / discretemax=4500;
+
+proc mixed data=mydata.bmilda plots(maxpoints=none)=all;
+    class id;
+    model bmi = time fage sex smoking / solution;
+    random intercept sex / subject=id type=UN;
+run;
+
+proc mixed data=mydata.bmilda plots(maxpoints=none)=all;
+    class id;
+    model bmi = time fage sex smoking / solution;
+    random intercept fage / subject=id type=UN;
+run;
+
+proc mixed data=mydata.bmilda plots(maxpoints=none)=all;
+    class id;
+    model bmi = time fage sex smoking / solution;
+    random intercept smoking / subject=id type=UN;
+run;
+
+ods graphics off;
