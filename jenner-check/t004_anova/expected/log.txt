@@ -1,0 +1,15 @@
+NOTE: Option OBS changed to 100.
+NOTE: DATA bmilda
+
+NOTE: Processing inline DATALINES (58 lines)
+
+NOTE: Read 58 rows from DATALINES.
+NOTE: Wrote bmilda (58 rows, 6 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC ANOVA data=bmilda
+
+NOTE: ODS plot written: anova_boxplot.spec.json
+NOTE: ODS plot written: anova_diagnostics.spec.json
+NOTE: PROC ANOVA: 58 observations, 1 effects analyzed

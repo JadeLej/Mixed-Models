@@ -1,0 +1,21 @@
+
+     The ANOVA Procedure     
+   Class Level Information   
+
+Class       Levels  Values   
+--------  --------  ---------
+time             5  0 1 2 3 4
+
+Number of Observations Read        58
+Number of Observations Used        58
+
+Dependent Variable: BMI
+
+Source                  DF  Sum of Squares     Mean Square    F Value     Pr > F
+--------------------------------------------------------------------------------
+time                     4         45.8504         11.4626       0.71     0.5914
+Error                   53        860.4560         16.2350          .          .
+Corrected Total         57        906.3064                          .          .
+
+R-Square: 0.0506  Root MSE: 4.0293  Mean: 24.5157
+

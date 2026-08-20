@@ -1,0 +1,18 @@
+{
+  "_captured_at": "2026-08-20T09:27:50Z",
+  "_captured_run_id": "r_91df1516aedf44c58f647f623e936374",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: Wrote bmilda (58 rows, 6 columns).",
+    "NOTE: PROC ANOVA"
+  ],
+  "log_does_not_contain": [
+    "ERROR:",
+    "[JENNER-ERROR"
+  ],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

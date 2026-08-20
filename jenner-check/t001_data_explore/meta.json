@@ -1,0 +1,7 @@
+{
+  "bundle": "t001_data_explore",
+  "source_file": "Project.sas",
+  "source_blob_sha": "7f5b32c090c65052d9f05fed2eff19f784ad73de",
+  "source_commit": "62274a52bf4736096b7569e190da6431445702c7",
+  "notes": "Data formatting + baseline extraction + smoker/sex frequency and mean BMI/age exploration (Project.sas lines 1-77). External libname replaced with inline DATALINES matching mydata.bmilda's column shape (id/time/bmi/fage/sex/smoking, confirmed against the shipped bmilda.sas7bdat header strings)."
+}
