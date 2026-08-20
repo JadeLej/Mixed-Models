@@ -1,0 +1,39 @@
+NOTE: Option OBS changed to 100.
+NOTE: PROC FORMAT library=WORK
+
+NOTE: FORMAT smokingf defined (2 ranges).
+NOTE: FORMAT sexf defined (2 ranges).
+NOTE: DATA bmilda
+
+NOTE: Processing inline DATALINES (58 lines)
+
+NOTE: Read 58 rows from DATALINES.
+NOTE: Wrote bmilda (58 rows, 6 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC SORT data=bmilda
+
+NOTE: Read 58 rows from bmilda.
+NOTE: Wrote sorted (58 rows, 6 columns).
+NOTE: PROC SORT statement used.
+NOTE: DATA ID_once
+
+
+NOTE: Read 58 rows from sorted.
+NOTE: Wrote ID_once (15 rows, 6 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC FREQ
+NOTE: PROC FREQ statement used.
+NOTE: PROC FREQ
+NOTE: Output dataset obs_counts has 15 observations and 2 variables.
+NOTE: PROC FREQ statement used.
+NOTE: PROC FREQ
+NOTE: Output dataset obs_summary has 3 observations and 3 variables.
+NOTE: PROC FREQ statement used.
+NOTE: PROC MEANS
+NOTE: PROC MEANS statement used.
+NOTE: PROC MEANS
+NOTE: PROC MEANS statement used.

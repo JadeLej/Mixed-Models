@@ -1,0 +1,55 @@
+                                                The UNIVARIATE Procedure
+                                                 Variable:  ebintercept
+
+                                                        Moments
+
+N                                 15    Sum Weights                       15
+Mean                        0.057333    Sum Observations            0.860000
+Std Deviation               3.658879    Variance                   13.387392
+Skewness                    0.505218    Kurtosis                   -0.472108
+Uncorrected SS            187.472800    Corrected SS              187.423493
+Coeff Variation          6381.764946    Std Error Mean              0.944718
+
+         Basic Statistical Measures          
+
+Location             Variability             
+--------  ---------  -------------  ---------
+Mean       0.057333  Std Deviation   3.658879
+Median    -0.790000  Variance       13.387392
+Mode              .  Range          11.790000
+
+Quantiles (Definition 5)
+
+Quantile     Estimate
+----------  ---------
+0% Min      -4.600000
+1%          -4.600000
+5%          -4.600000
+10%         -4.350000
+25% Q1      -3.410000
+50% Median  -0.790000
+75% Q3       2.020000
+90%          6.030000
+95%          7.190000
+99%          7.190000
+100% Max     7.190000
+
+                   Extreme Observations                    
+
+           Lowest                        Highest
+    Value  sex            Obs     Value  sex            Obs
+---------  --------  --------  --------  --------  --------
+-4.600000  0               14  1.720000  0                9
+-4.350000  0               15  2.020000  0                2
+-4.290000  0               10  3.300000  1               13
+-3.410000  0                4  6.030000  1                7
+-2.140000  0                3  7.190000  1               12
+
+
+                                               Tests for Location: Mu0=0
+ 
+                                    Test           -Statistic-    -----p Value------
+
+                                    Student's t    t  0.060688    Pr > |t|    0.9525
+                                    Sign           M      -0.5    Pr >= |M|   1.0000
+                                    Signed Rank    S        -1    Pr >= |S|   0.9780
